@@ -1,5 +1,6 @@
 "use client";
 
+import ArticleRenderer from "@/components/ArticleRenderer";
 import Studio from "@/components/Studio";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -9,7 +10,6 @@ import { ArrowLeft, PanelRightClose, PanelRightOpen } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
 
 export default function ArticlePage() {
   const params = useParams();
@@ -69,9 +69,7 @@ export default function ArticlePage() {
               </div>
             </div>
             
-            <article className="prose prose-lg max-w-none prose-p:leading-relaxed prose-a:text-blue-600 prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900">
-              <ReactMarkdown>{article.content}</ReactMarkdown>
-            </article>
+            <ArticleRenderer content={article.content} />
           </div>
         </main>
 
