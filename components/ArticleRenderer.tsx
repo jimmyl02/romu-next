@@ -14,7 +14,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content }) => {
   const components: Components = {
     h1: ({ children, ...props }) => (
       <h1
-        className="text-3xl md:text-4xl font-bold mt-12 mb-6 text-gray-900 leading-tight tracking-tight"
+        className="text-3xl md:text-4xl font-bold mt-6 mb-6 text-gray-900 leading-tight tracking-tight"
         {...props}
       >
         {children}
@@ -22,7 +22,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content }) => {
     ),
     h2: ({ children, ...props }) => (
       <h2
-        className="text-2xl md:text-3xl font-bold mt-10 mb-5 text-gray-900 leading-snug"
+        className="text-2xl md:text-3xl font-bold mt-6 mb-5 text-gray-900 leading-snug"
         {...props}
       >
         {children}
@@ -30,7 +30,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content }) => {
     ),
     h3: ({ children, ...props }) => (
       <h3
-        className="text-xl md:text-2xl font-semibold mt-8 mb-4 text-gray-900 leading-snug"
+        className="text-xl md:text-2xl font-semibold mt-6 mb-4 text-gray-900 leading-snug"
         {...props}
       >
         {children}
