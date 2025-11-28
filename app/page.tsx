@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
-import { Home, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -24,18 +24,6 @@ function AuthenticatedDashboard() {
       </header>
 
       <div className="flex flex-1 px-8">
-        {/* Sidebar / Left Nav */}
-        <aside className="w-48 pt-8 hidden md:block">
-          <nav className="space-y-4">
-            <Link
-              href="/"
-              className="flex items-center gap-3 text-lg font-medium text-gray-900"
-            >
-              <Home className="w-5 h-5" />
-              Home
-            </Link>
-          </nav>
-        </aside>
 
         {/* Main Content */}
         <main className="flex-1 max-w-3xl mx-auto pt-8">
