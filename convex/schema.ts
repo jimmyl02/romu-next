@@ -9,9 +9,9 @@ export default defineSchema({
     content: v.string(), // Markdown content
     createdAt: v.number(),
   })
-  .index("by_user", ["userId"])
-  .index("by_user_created", ["userId", "createdAt"]),
-  
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"]),
+
   users: defineTable({
     tokenIdentifier: v.string(),
     name: v.string(),

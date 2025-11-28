@@ -10,7 +10,10 @@ interface AddArticleModalProps {
   onClose: () => void;
 }
 
-export default function AddArticleModal({ isOpen, onClose }: AddArticleModalProps) {
+export default function AddArticleModal({
+  isOpen,
+  onClose,
+}: AddArticleModalProps) {
   const create = useMutation(api.articles.create);
   const [url, setUrl] = useState("");
   const [content, setContent] = useState("");
@@ -24,7 +27,7 @@ export default function AddArticleModal({ isOpen, onClose }: AddArticleModalProp
     try {
       // Simple title extraction or placeholder
       const title = url.split("//")[1]?.split("/")[0] || "Untitled Article";
-      
+
       await create({
         title,
         url,
@@ -42,17 +45,22 @@ export default function AddArticleModal({ isOpen, onClose }: AddArticleModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl border border-gray-200">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Add New Article</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-black">
-            <X className="w-5 h-5" />
+      <div className="w-full max-w-lg rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Add New Article
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-black"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-600">
+            <label className="mb-1 block text-sm font-medium text-gray-600">
               URL
             </label>
             <input
@@ -61,12 +69,12 @@ export default function AddArticleModal({ isOpen, onClose }: AddArticleModalProp
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/article"
-              className="w-full rounded bg-gray-50 border border-gray-200 px-3 py-2 text-black focus:outline-none focus:border-gray-400 transition-colors"
+              className="w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-black transition-colors focus:border-gray-400 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-600">
+            <label className="mb-1 block text-sm font-medium text-gray-600">
               Content (Markdown)
             </label>
             <textarea
@@ -75,22 +83,22 @@ export default function AddArticleModal({ isOpen, onClose }: AddArticleModalProp
               onChange={(e) => setContent(e.target.value)}
               placeholder="# Article Title..."
               rows={8}
-              className="w-full rounded bg-gray-50 border border-gray-200 px-3 py-2 text-black focus:outline-none focus:border-gray-400 transition-colors resize-none font-mono text-sm"
+              className="w-full resize-none rounded border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-black transition-colors focus:border-gray-400 focus:outline-none"
             />
           </div>
 
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2">
-               {/* Toggle placeholder */}
-               <div className="w-8 h-4 bg-gray-200 rounded-full relative">
-                  <div className="w-4 h-4 bg-gray-400 rounded-full absolute left-0"></div>
-               </div>
-               <span className="text-sm text-gray-500">Enhance with AI</span>
+              {/* Toggle placeholder */}
+              <div className="relative h-4 w-8 rounded-full bg-gray-200">
+                <div className="absolute left-0 h-4 w-4 rounded-full bg-gray-400"></div>
+              </div>
+              <span className="text-sm text-gray-500">Enhance with AI</span>
             </div>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-black text-white font-medium rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+              className="rounded bg-black px-4 py-2 font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
             >
               {isLoading ? "Saving..." : "Save"}
             </button>

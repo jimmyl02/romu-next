@@ -50,12 +50,12 @@ export const get = query({
     }
     const article = await ctx.db.get(args.id);
     if (!article) return null;
-    
+
     // Simple authorization check
     if (article.userId !== identity.subject) {
       return null;
     }
-    
+
     return article;
   },
 });
