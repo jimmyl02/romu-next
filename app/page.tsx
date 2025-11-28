@@ -17,7 +17,7 @@ function AuthenticatedDashboard() {
     <div className="min-h-screen flex flex-col">
       {/* Top Navigation */}
       <header className="flex items-center justify-between px-8 py-6">
-        <h1 className="text-2xl font-bold tracking-tight">romu</h1>
+        <h1 className="text-2xl font-bold font-serif tracking-tight">romu</h1>
         <div className="flex items-center gap-4">
           <UserButton />
         </div>
@@ -50,7 +50,7 @@ function AuthenticatedDashboard() {
                   href={`/articles/${article._id}`}
                   className="block group"
                 >
-                  <article>
+                  <article className="font-serif">
                     <div className="flex items-baseline justify-between mb-1">
                       <h3 className="text-xl font-bold group-hover:underline decoration-gray-400 underline-offset-4 text-gray-900">
                         {article.title}
@@ -59,7 +59,7 @@ function AuthenticatedDashboard() {
                         {formatDistanceToNow(article.createdAt, { addSuffix: true })}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-500 font-sans">
+                    <div className="text-sm text-gray-500">
                       {new URL(article.url).hostname.replace("www.", "")}
                     </div>
                   </article>
@@ -86,7 +86,7 @@ function LandingPage() {
         <div className="text-2xl font-bold font-serif tracking-tight">romu</div>
         <div className="flex items-center gap-6">
           <SignInButton mode="modal">
-            <button className="px-5 py-2.5 bg-[#222] text-[#FDFBF7] rounded-full text-sm font-medium hover:bg-gray-800 transition-all">
+            <button className="px-5 py-2.5 bg-[#222] text-[#FDFBF7] rounded-full text-sm font-medium hover:bg-gray-800 transition-all cursor-pointer">
               Sign In
             </button>
           </SignInButton>
@@ -194,7 +194,7 @@ export default function Page() {
         <LandingPage />
       </Unauthenticated>
       <AuthLoading>
-        <div className="min-h-screen flex items-center justify-center text-gray-500">
+        <div className="min-h-screen flex items-center justify-center text-gray-500 font-serif">
           Loading...
         </div>
       </AuthLoading>

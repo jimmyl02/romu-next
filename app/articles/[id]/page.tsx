@@ -63,13 +63,13 @@ export default function ArticlePage() {
         >
           <div className="max-w-3xl mx-auto px-6 py-12">
             <div className="mb-8">
-              <h1 className="text-4xl font-bold mb-4 leading-tight font-serif text-gray-900">{article.title}</h1>
+              <h1 className="text-4xl font-bold mb-4 leading-tight text-gray-900">{article.title}</h1>
               <div className="text-gray-500 text-sm">
                 {new URL(article.url).hostname}
               </div>
             </div>
             
-            <article className="prose prose-lg max-w-none font-serif prose-headings:font-serif prose-p:leading-relaxed prose-a:text-blue-600 prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900">
+            <article className="prose prose-lg max-w-none prose-p:leading-relaxed prose-a:text-blue-600 prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900">
               <ReactMarkdown>{article.content}</ReactMarkdown>
             </article>
           </div>

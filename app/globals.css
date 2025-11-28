@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-@theme {
+@theme inline {
+  --font-sans: var(--font-source-serif);
   --font-serif: var(--font-source-serif);
 }
 
@@ -12,5 +13,5 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-serif), serif;
+  font-family: var(--font-source-serif), serif;
 }
