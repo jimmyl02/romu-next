@@ -11,4 +11,11 @@ export default defineSchema({
   })
   .index("by_user", ["userId"])
   .index("by_user_created", ["userId", "createdAt"]),
+  
+  users: defineTable({
+    tokenIdentifier: v.string(),
+    name: v.string(),
+    email: v.string(),
+    image: v.optional(v.string()),
+  }).index("by_token", ["tokenIdentifier"]),
 });
