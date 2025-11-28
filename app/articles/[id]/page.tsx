@@ -63,7 +63,7 @@ export default function ArticlePage() {
         >
           <div className="max-w-3xl mx-auto px-6 py-12">
             <div className="mb-8">
-              <h1 className="text-4xl font-bold mb-4 leading-tight text-gray-900">{article.title}</h1>
+              <h1 className="text-4xl font-bold mb-2 leading-tight text-gray-900">{article.title}</h1>
               <div className="text-gray-500 text-sm">
                 {new URL(article.url).hostname}
               </div>
