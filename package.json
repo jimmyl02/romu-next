@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/react": "^2.0.104",
     "@clerk/nextjs": "^6.35.5",
     "@tailwindcss/typography": "^0.5.19",
+    "ai": "^5.0.104",
     "clsx": "^2.1.1",
     "convex": "^1.29.3",
     "date-fns": "^4.1.0",
@@ -21,7 +23,8 @@
     "react-markdown": "^10.1.0",
     "react-textarea-autosize": "^8.5.9",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

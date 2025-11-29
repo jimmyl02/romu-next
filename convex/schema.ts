@@ -7,6 +7,8 @@ export default defineSchema({
     title: v.string(),
     url: v.string(),
     content: v.string(), // Markdown content
+    description: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])

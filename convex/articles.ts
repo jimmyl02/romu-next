@@ -23,6 +23,8 @@ export const create = mutation({
     title: v.string(),
     url: v.string(),
     content: v.string(),
+    description: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -35,6 +37,8 @@ export const create = mutation({
       title: args.title,
       url: args.url,
       content: args.content,
+      description: args.description,
+      authors: args.authors,
       createdAt: Date.now(),
     });
     return articleId;
