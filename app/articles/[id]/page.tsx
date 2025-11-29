@@ -165,7 +165,6 @@ export default function ArticlePage() {
         </main>
 
         {/* Studio Sidebar */}
-        {/* Studio Sidebar */}
         <Studio
           isOpen={isStudioOpen}
           onClose={() => setIsStudioOpen(false)}
