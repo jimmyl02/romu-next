@@ -24,27 +24,27 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
   // Notes
   const note = useQuery(api.notes.get, { articleId });
   const updateNote = useMutation(api.notes.update);
-  const [localNoteContent, setLocalNoteContent] = useState("");
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [localNoteContent, setLocalNoteContent] = useState<string | null>(null);
 
   // Sync local note content with DB content ONLY when it first loads
   useEffect(() => {
-    if (note && !hasLoaded) {
-      setLocalNoteContent(note.content);
-      setHasLoaded(true);
+    if (!localNoteContent) {
+      if (note) {
+        setLocalNoteContent(note.content);
+      }
     }
-  }, [note, hasLoaded]);
+  }, [note]);
 
   // Debounced save
   useEffect(() => {
-    if (!hasLoaded) return;
+    if (!localNoteContent) return;
 
     const timer = setTimeout(() => {
       updateNote({ articleId, content: localNoteContent });
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
-  }, [localNoteContent, updateNote, articleId, hasLoaded]);
+  }, [localNoteContent, updateNote, articleId]);
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalNoteContent(e.target.value);
@@ -53,15 +53,6 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
   // Chat
   // We use Convex for initial history, but useChat for active session state
   const existingMessages = useQuery(api.messages.list, { articleId });
-  console.log(
-    "existingMessages",
-    existingMessages,
-    existingMessages?.map((m) => ({
-      id: m._id,
-      role: m.role as "user" | "assistant",
-      parts: [{ type: "text", text: m.content }],
-    })),
-  );
   const [messageInput, setMessageInput] = useState("");
 
   const { messages, status, sendMessage } = useChat({
