@@ -4,6 +4,7 @@ import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 
 import { Check } from "lucide-react";
+import rehypeUnwrapImages from "rehype-unwrap-images";
 import remarkGfm from "remark-gfm";
 
 interface ArticleRendererProps {
@@ -166,7 +167,11 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content }) => {
 
   return (
     <div className="font-serif">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeUnwrapImages]}
+        components={components}
+      >
         {content}
       </ReactMarkdown>
     </div>
