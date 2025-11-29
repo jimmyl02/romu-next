@@ -127,7 +127,7 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {activeTab === "notes" ? (
           <textarea
-            value={localNoteContent}
+            value={localNoteContent ? localNoteContent : ""}
             onChange={handleNoteChange}
             placeholder="Write your notes here..."
             className="w-full flex-1 resize-none bg-transparent p-6 font-serif leading-relaxed text-black placeholder:text-gray-400 focus:outline-none"
