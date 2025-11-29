@@ -225,7 +225,7 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
                 <div
                   key={idx}
                   className={clsx(
-                    "flex",
+                    "mb-2 flex",
                     msg.role === "user" ? "justify-end" : "justify-start",
                   )}
                 >
