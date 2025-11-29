@@ -17,6 +17,7 @@ export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
     name: v.string(),
+    username: v.optional(v.string()),
     email: v.string(),
     image: v.optional(v.string()),
   }).index("by_token", ["tokenIdentifier"]),
