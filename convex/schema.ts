@@ -18,4 +18,18 @@ export default defineSchema({
     email: v.string(),
     image: v.optional(v.string()),
   }).index("by_token", ["tokenIdentifier"]),
+
+  notes: defineTable({
+    userId: v.string(),
+    articleId: v.id("articles"),
+    content: v.string(),
+  }).index("by_user_article", ["userId", "articleId"]),
+
+  messages: defineTable({
+    userId: v.string(),
+    articleId: v.id("articles"),
+    role: v.string(), // "user" | "ai"
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_article", ["articleId", "createdAt"]),
 });

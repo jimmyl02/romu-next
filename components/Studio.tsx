@@ -1,49 +1,74 @@
 "use client";
 
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { clsx } from "clsx";
+import { useMutation, useQuery } from "convex/react";
 import { FileText, MessageSquare, Send, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface StudioProps {
   isOpen: boolean;
   onClose: () => void;
+  articleId: Id<"articles">;
 }
 
-export default function Studio({ isOpen, onClose }: StudioProps) {
+export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
   const [activeTab, setActiveTab] = useState<"notes" | "chat">("notes");
-  const [noteContent, setNoteContent] = useState("");
   const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<
-    { role: "user" | "ai"; content: string }[]
-  >([
-    {
-      role: "ai",
-      content:
-        "Hello! I'm your AI research assistant. Ask me anything about this article.",
-    },
-  ]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Notes
+  const note = useQuery(api.notes.get, { articleId });
+  const updateNote = useMutation(api.notes.update);
+  const [localNoteContent, setLocalNoteContent] = useState("");
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Sync local note content with DB content ONLY when it first loads
+  useEffect(() => {
+    if (note && !hasLoaded) {
+      setLocalNoteContent(note.content);
+      setHasLoaded(true);
+    }
+  }, [note, hasLoaded]);
+
+  // Debounced save
+  useEffect(() => {
+    if (!hasLoaded) return;
+
+    const timer = setTimeout(() => {
+      updateNote({ articleId, content: localNoteContent });
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [localNoteContent, updateNote, articleId, hasLoaded]);
+
+  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalNoteContent(e.target.value);
+  };
+
+  // Chat
+  const messages = useQuery(api.messages.list, { articleId });
+  const sendMessage = useMutation(api.messages.send);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
-    const newMessages = [
-      ...chatMessages,
-      { role: "user" as const, content: chatInput },
-    ];
-    setChatMessages(newMessages);
+    await sendMessage({
+      articleId,
+      content: chatInput,
+      role: "user",
+    });
     setChatInput("");
 
-    // Mock AI response
+    // Mock AI response for now, but stored in DB
     setTimeout(() => {
-      setChatMessages([
-        ...newMessages,
-        {
-          role: "ai",
-          content:
-            "That's an interesting point! This article discusses causal trees in depth...",
-        },
-      ]);
+      sendMessage({
+        articleId,
+        content:
+          "That's an interesting point! This article discusses causal trees in depth...",
+        role: "ai",
+      });
     }, 1000);
   };
 
@@ -96,15 +121,15 @@ export default function Studio({ isOpen, onClose }: StudioProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {activeTab === "notes" ? (
           <textarea
-            value={noteContent}
-            onChange={(e) => setNoteContent(e.target.value)}
+            value={localNoteContent}
+            onChange={handleNoteChange}
             placeholder="Write your notes here..."
             className="w-full flex-1 resize-none bg-transparent p-6 font-serif leading-relaxed text-black placeholder:text-gray-400 focus:outline-none"
           />
         ) : (
           <div className="flex h-full flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              {chatMessages.map((msg, idx) => (
+              {messages?.map((msg, idx) => (
                 <div
                   key={idx}
                   className={clsx(
@@ -124,6 +149,11 @@ export default function Studio({ isOpen, onClose }: StudioProps) {
                   </div>
                 </div>
               ))}
+              {messages?.length === 0 && (
+                <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                  No messages yet. Start a conversation!
+                </div>
+              )}
             </div>
             <form
               onSubmit={handleSendMessage}

@@ -59,3 +59,24 @@ export const get = query({
     return article;
   },
 });
+
+export const update = mutation({
+  args: {
+    id: v.id("articles"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthenticated");
+    }
+    const article = await ctx.db.get(args.id);
+    if (!article) {
+      throw new Error("Article not found");
+    }
+    if (article.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+    await ctx.db.patch(args.id, { content: args.content });
+  },
+});
