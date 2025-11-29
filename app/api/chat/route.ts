@@ -36,24 +36,6 @@ export async function POST(req: Request) {
       return new NextResponse("Article not found", { status: 404 });
     }
 
-    // Save user message to Convex
-    const lastMessage = messages[messages.length - 1];
-    let content = lastMessage.content;
-    if (typeof content !== "string" && Array.isArray(lastMessage.parts)) {
-      content = lastMessage.parts
-        .map((part: any) => {
-          if (part.type === "text") return part.text;
-          return "";
-        })
-        .join("");
-    }
-
-    await convex.mutation(api.messages.send, {
-      articleId,
-      content,
-      role: "user",
-    });
-
     // Get the model name from the model registry
     if (!(model in MODEL_MAP)) {
       return new NextResponse("Model not found", { status: 400 });
@@ -75,14 +57,6 @@ export async function POST(req: Request) {
       model: selectedModel,
       messages: convertToModelMessages(messages),
       system: systemPrompt,
-      onFinish: async ({ text }) => {
-        // Save AI response to Convex
-        await convex.mutation(api.messages.send, {
-          articleId,
-          content: text,
-          role: "ai",
-        });
-      },
     });
 
     return result.toUIMessageStreamResponse();

@@ -89,6 +89,7 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
   // Chat
   // We use Convex for initial history, but useChat for active session state
   const existingMessages = useQuery(api.messages.list, { articleId });
+  const sendMessageMutation = useMutation(api.messages.send);
   const [messageInput, setMessageInput] = useState("");
 
   const { messages, status, sendMessage } = useChat({
@@ -101,6 +102,21 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
       role: m.role as "user" | "assistant",
       parts: [{ type: "text", text: m.content }],
     })),
+    onFinish: async ({ message }) => {
+      // Save AI message to database after streaming completes
+      const content = message.parts
+        .map((part) => {
+          if (part.type === "text") return part.text;
+          return "";
+        })
+        .join("");
+
+      await sendMessageMutation({
+        articleId,
+        content,
+        role: "ai",
+      });
+    },
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -201,9 +217,10 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
             </div>
 
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
-              {existingMessages?.map((msg, idx) => (
+              {/* Render all completed messages from database */}
+              {existingMessages?.map((msg) => (
                 <div
-                  key={idx}
+                  key={msg._id}
                   className={clsx(
                     "mb-2 flex",
                     msg.role === "user" ? "justify-end" : "justify-start",
@@ -221,41 +238,51 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
                   </div>
                 </div>
               ))}
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={clsx(
-                    "mb-2 flex",
-                    msg.role === "user" ? "justify-end" : "justify-start",
-                  )}
-                >
+              {/* Render only streaming messages that aren't saved to DB yet */}
+              {messages
+                .filter((msg) => {
+                  // Only show messages that don't exist in the database
+                  // This means we only show the currently streaming messages
+                  const existingCount = existingMessages?.length ?? 0;
+                  const msgIndex = messages.indexOf(msg);
+                  // Show messages beyond what's in the database
+                  return msgIndex >= existingCount;
+                })
+                .map((msg, idx) => (
                   <div
+                    key={`streaming-${idx}`}
                     className={clsx(
-                      "max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap",
-                      msg.role === "user"
-                        ? "bg-black text-white"
-                        : "bg-gray-100 text-gray-800",
+                      "mb-2 flex",
+                      msg.role === "user" ? "justify-end" : "justify-start",
                     )}
                   >
-                    {msg.parts.length > 0 &&
-                      msg.parts.map((part, i) => {
-                        switch (part.type) {
-                          case "text":
-                            return (
-                              <div
-                                key={`${msg.id}-${i}`}
-                                className="whitespace-pre-wrap"
-                              >
-                                {part.text}
-                              </div>
-                            );
-                          default:
-                            return null;
-                        }
-                      })}
+                    <div
+                      className={clsx(
+                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap",
+                        msg.role === "user"
+                          ? "bg-black text-white"
+                          : "bg-gray-100 text-gray-800",
+                      )}
+                    >
+                      {msg.parts.length > 0 &&
+                        msg.parts.map((part, i) => {
+                          switch (part.type) {
+                            case "text":
+                              return (
+                                <div
+                                  key={`${msg.id}-${i}`}
+                                  className="whitespace-pre-wrap"
+                                >
+                                  {part.text}
+                                </div>
+                              );
+                            default:
+                              return null;
+                          }
+                        })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
               {existingMessages?.length === 0 && messages.length === 0 && (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
                   <div className="rounded-full bg-gray-50 p-4">
@@ -267,10 +294,20 @@ export default function Studio({ isOpen, onClose, articleId }: StudioProps) {
               <div ref={messagesEndRef} />
             </div>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                sendMessage({ text: messageInput });
+                const userMessageContent = messageInput;
                 setMessageInput("");
+
+                // Save user message to database immediately
+                await sendMessageMutation({
+                  articleId,
+                  content: userMessageContent,
+                  role: "user",
+                });
+
+                // Send message to AI (will stream response)
+                sendMessage({ text: userMessageContent });
               }}
               className="border-t border-gray-100 p-4"
             >
