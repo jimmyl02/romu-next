@@ -1,4 +1,4 @@
-import LiveBlock from "@/components/LiveBlock";
+import LiveBlock from "@/components/articles/renderer/LiveBlock";
 import { useEffect, useState } from "react";
 
 interface LiveEditorProps {

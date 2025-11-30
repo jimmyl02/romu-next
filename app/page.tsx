@@ -1,6 +1,6 @@
 "use client";
 
-import AddArticleModal from "@/components/AddArticleModal";
+import AddArticleModal from "@/components/home/AddArticleModal";
 import { api } from "@/convex/_generated/api";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import {

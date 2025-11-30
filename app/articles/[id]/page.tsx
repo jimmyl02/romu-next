@@ -1,8 +1,11 @@
 "use client";
 
-import ArticleRenderer from "@/components/ArticleRenderer";
-import LiveEditor from "@/components/LiveEditor";
-import Studio from "@/components/Studio";
+import AnnotationSidebar, {
+  Annotation,
+} from "@/components/articles/components/AnnotationSidebar";
+import Studio from "@/components/articles/components/Studio";
+import ArticleRenderer from "@/components/articles/renderer/ArticleRenderer";
+import LiveEditor from "@/components/articles/renderer/LiveEditor";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { clsx } from "clsx";
@@ -28,6 +31,64 @@ export default function ArticlePage() {
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Highlights and annotations state
+  const [highlights, setHighlights] = useState<
+    Array<{ id: string; text: string; startOffset: number; endOffset: number }>
+  >([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [pendingAnnotation, setPendingAnnotation] = useState<{
+    id: string;
+    text: string;
+    startOffset: number;
+    endOffset: number;
+  } | null>(null);
+
+  const handleAddHighlight = (
+    text: string,
+    startOffset: number,
+    endOffset: number,
+  ) => {
+    const id = `highlight-${Date.now()}-${Math.random()}`;
+    setHighlights([...highlights, { id, text, startOffset, endOffset }]);
+  };
+
+  const handleDeleteHighlight = (highlightId: string) => {
+    setHighlights(highlights.filter((h) => h.id !== highlightId));
+  };
+
+  const handleStartAnnotation = (
+    text: string,
+    startOffset: number,
+    endOffset: number,
+  ) => {
+    const id = `annotation-${Date.now()}-${Math.random()}`;
+    setPendingAnnotation({ id, text, startOffset, endOffset });
+  };
+
+  const handleAddComment = (annotationId: string, comment: string) => {
+    if (pendingAnnotation && pendingAnnotation.id === annotationId) {
+      setAnnotations([
+        ...annotations,
+        {
+          id: pendingAnnotation.id,
+          text: pendingAnnotation.text,
+          comment,
+          startOffset: pendingAnnotation.startOffset,
+          endOffset: pendingAnnotation.endOffset,
+        },
+      ]);
+      setPendingAnnotation(null);
+    }
+  };
+
+  const handleDeleteAnnotation = (annotationId: string) => {
+    setAnnotations(annotations.filter((a) => a.id !== annotationId));
+  };
+
+  const handleCancelPending = () => {
+    setPendingAnnotation(null);
+  };
 
   if (article === undefined) {
     return <div className="p-8 text-gray-500">Loading article...</div>;
@@ -159,10 +220,30 @@ export default function ArticlePage() {
                 isEditingMode={true}
               />
             ) : (
-              <ArticleRenderer content={article.content} />
+              <ArticleRenderer
+                content={article.content}
+                highlights={highlights}
+                annotations={annotations}
+                onAddHighlight={handleAddHighlight}
+                onStartAnnotation={handleStartAnnotation}
+                onDeleteHighlight={handleDeleteHighlight}
+              />
             )}
           </div>
         </main>
+
+        {/* Annotation Sidebar */}
+        {!isEditing && (annotations.length > 0 || pendingAnnotation) && (
+          <aside className="fixed top-[73px] right-0 z-20 h-[calc(100vh-73px)] w-80 shadow-lg">
+            <AnnotationSidebar
+              annotations={annotations}
+              onAddComment={handleAddComment}
+              onDeleteAnnotation={handleDeleteAnnotation}
+              pendingAnnotation={pendingAnnotation || undefined}
+              onCancelPending={handleCancelPending}
+            />
+          </aside>
+        )}
 
         {/* Studio Sidebar */}
         <Studio

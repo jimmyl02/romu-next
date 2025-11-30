@@ -1,4 +1,4 @@
-import ArticleRenderer from "@/components/ArticleRenderer";
+import ArticleRenderer from "@/components/articles/renderer/ArticleRenderer";
 import { clsx } from "clsx";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
