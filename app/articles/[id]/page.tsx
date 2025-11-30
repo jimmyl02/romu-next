@@ -385,9 +385,14 @@ export default function ArticlePage() {
                   {article.title}
                 </h1>
                 {article.url !== undefined && (
-                  <div className="text-sm text-gray-500">
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer text-sm text-gray-500 transition-colors hover:text-blue-600 hover:underline"
+                  >
                     {safeUrlCleanup(article.url)}
-                  </div>
+                  </a>
                 )}
               </div>
 
