@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function ArticlePage() {
   const params = useParams();
@@ -32,10 +32,57 @@ export default function ArticlePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Highlights and annotations state
-  const [highlights, setHighlights] = useState<
-    Array<{ id: string; text: string; startOffset: number; endOffset: number }>
-  >([]);
+  // Highlight state
+  const highlights = useQuery(api.highlights.list, { articleId: id });
+  const addHighlightRaw = useMutation(
+    api.highlights.create,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { articleId, text, startOffset, endOffset } = args;
+    const existingHighlights = localStore.getQuery(api.highlights.list, {
+      articleId,
+    });
+
+    // Now that we have the existing highlights, we can optimistically add the new highlight
+    if (existingHighlights !== undefined) {
+      const newHighlight = {
+        _id: crypto.randomUUID() as Id<"highlights">,
+        _creationTime: Date.now(),
+        articleId,
+        userId: "", // this is okay as convex will just roll this back
+        text,
+        startOffset,
+        endOffset,
+      };
+      localStore.setQuery(api.highlights.list, { articleId }, [
+        ...existingHighlights,
+        newHighlight,
+      ]);
+    }
+  });
+  const addHighlight = useCallback(
+    (text: string, startOffset: number, endOffset: number) => {
+      addHighlightRaw({ articleId: id, text, startOffset, endOffset });
+    },
+    [id],
+  );
+  const removeHighlightRaw = useMutation(
+    api.highlights.remove,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { highlightId } = args;
+    const existingHighlights = localStore.getQuery(api.highlights.list, {
+      articleId: id,
+    });
+    if (existingHighlights !== undefined) {
+      localStore.setQuery(api.highlights.list, { articleId: id }, [
+        ...existingHighlights.filter((h) => h._id !== highlightId),
+      ]);
+    }
+  });
+  const removeHighlight = useCallback((highlightId: string) => {
+    removeHighlightRaw({ highlightId: highlightId as Id<"highlights"> });
+  }, []);
+
+  // Annotations state
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [pendingAnnotation, setPendingAnnotation] = useState<{
     id: string;
@@ -112,19 +159,6 @@ export default function ArticlePage() {
       window.removeEventListener("resize", calculatePositions);
     };
   }, [annotations, highlights, pendingAnnotation]); // Re-run when content changes
-
-  const handleAddHighlight = (
-    text: string,
-    startOffset: number,
-    endOffset: number,
-  ) => {
-    const id = `highlight-${Date.now()}-${Math.random()}`;
-    setHighlights([...highlights, { id, text, startOffset, endOffset }]);
-  };
-
-  const handleDeleteHighlight = (highlightId: string) => {
-    setHighlights(highlights.filter((h) => h.id !== highlightId));
-  };
 
   const handleStartAnnotation = (
     text: string,
@@ -306,9 +340,9 @@ export default function ArticlePage() {
                   content={article.content}
                   highlights={highlights}
                   annotations={annotations}
-                  onAddHighlight={handleAddHighlight}
+                  onAddHighlight={addHighlight}
                   onStartAnnotation={handleStartAnnotation}
-                  onDeleteHighlight={handleDeleteHighlight}
+                  onDeleteHighlight={removeHighlight}
                   pendingAnnotation={pendingAnnotation}
                 />
               )}

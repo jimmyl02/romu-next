@@ -34,5 +34,13 @@ export default defineSchema({
     role: v.string(), // "user" | "ai"
     content: v.string(),
     createdAt: v.number(),
-  }).index("by_article", ["articleId", "createdAt"]),
+  }).index("by_article", ["articleId", "userId", "createdAt"]),
+
+  highlights: defineTable({
+    articleId: v.id("articles"),
+    userId: v.string(),
+    text: v.string(),
+    startOffset: v.number(),
+    endOffset: v.number(),
+  }).index("by_user_article", ["articleId", "userId"]),
 });

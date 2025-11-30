@@ -12,7 +12,7 @@ import SelectionTooltip from "../tooltips/SelectionTooltip";
 interface ArticleRendererProps {
   content: string;
   highlights?: Array<{
-    id: string;
+    _id: string;
     text: string;
     startOffset: number;
     endOffset: number;
@@ -408,7 +408,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
           highlight.endOffset,
           "highlight",
           "background-color: #FEF3C7; padding: 2px 0; cursor: pointer;",
-          highlight.id, // Pass the ID
+          highlight._id, // Pass the ID
         );
       }
     });
