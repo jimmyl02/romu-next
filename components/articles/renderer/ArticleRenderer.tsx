@@ -33,8 +33,15 @@ interface ArticleRendererProps {
     text: string,
     startOffset: number,
     endOffset: number,
+    initialTop?: number,
   ) => void;
   onDeleteHighlight?: (highlightId: string) => void;
+  pendingAnnotation?: {
+    id: string;
+    text: string;
+    startOffset: number;
+    endOffset: number;
+  } | null;
 }
 
 const ArticleRenderer: React.FC<ArticleRendererProps> = ({
@@ -43,7 +50,9 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
   annotations = [],
   onAddHighlight,
   onStartAnnotation,
+
   onDeleteHighlight,
+  pendingAnnotation,
 }) => {
   const [tooltipPosition, setTooltipPosition] = useState<{
     top: number;
@@ -92,7 +101,17 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
     // Calculate position for tooltip
     const rect = range.getBoundingClientRect();
     const tooltipLeft = rect.left + rect.width / 2;
-    const tooltipTop = rect.top + window.scrollY; // Use document coordinates for absolute positioning
+    // We need to subtract the container's top offset if we are inside a relative container
+    // But since we are using fixed positioning for tooltips (or should be), let's check.
+    // Actually, let's use fixed positioning for the tooltips themselves to avoid container issues.
+    // So we just need client coordinates (rect.top, rect.left).
+    // But the current implementation uses absolute positioning with scrollY.
+    // Let's stick to absolute but make sure it's relative to the document body.
+    // If the parent has `position: relative`, `top: rect.top + window.scrollY` will be wrong if the parent is not at (0,0).
+
+    // Better approach: Use fixed positioning for the tooltip so it's always relative to the viewport.
+    // This avoids all issues with parent containers.
+    const tooltipTop = rect.top;
 
     setTooltipPosition({
       top: tooltipTop,
@@ -190,10 +209,28 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
     window.getSelection()?.removeAllRanges();
 
     if (selectedText && selectionRange && onStartAnnotation) {
+      // Calculate initial top position relative to the article container
+      // This is an approximation to prevent the jump before the mark is rendered
+      let initialTop = 0;
+      if (tooltipPosition) {
+        // Tooltip position is fixed/absolute relative to viewport/document
+        // We need relative to container.
+        const container = document.getElementById("article-container");
+        const containerRect = container?.getBoundingClientRect();
+        if (containerRect) {
+          // tooltipPosition.top is clientY (fixed) because we changed it in previous step
+          // or pageY (absolute) depending on which version we are on.
+          // Let's check how tooltipPosition is set.
+          // It is set as `rect.top` (client coordinate) in the latest fix.
+          initialTop = tooltipPosition.top - containerRect.top;
+        }
+      }
+
       onStartAnnotation(
         selectedText,
         selectionRange.startOffset,
         selectionRange.endOffset,
+        initialTop,
       );
     }
     setTooltipPosition(null);
@@ -312,7 +349,12 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
         mark.className = className;
         mark.setAttribute("style", style);
         if (highlightId) {
-          mark.setAttribute("data-highlight-id", highlightId);
+          // If it's an annotation, use data-annotation-id, otherwise data-highlight-id
+          if (className === "annotation") {
+            mark.setAttribute("data-annotation-id", highlightId);
+          } else {
+            mark.setAttribute("data-highlight-id", highlightId);
+          }
         }
         mark.textContent = text.substring(start, end);
         fragment.appendChild(mark);
@@ -334,8 +376,20 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
         annotation.endOffset,
         "annotation",
         "background-color: #FFF4CC; border-bottom: 2px solid #F59E0B; cursor: pointer; padding: 2px 0;",
+        annotation.id, // Pass the ID for annotations too
       );
     });
+
+    // Apply pending annotation if exists
+    if (pendingAnnotation) {
+      applyHighlightByRange(
+        pendingAnnotation.startOffset,
+        pendingAnnotation.endOffset,
+        "annotation", // Use same class for lookup
+        "background-color: #FEF3C7; border-bottom: 2px dashed #F59E0B; cursor: default;", // Dashed underline for pending
+        pendingAnnotation.id,
+      );
+    }
 
     // Apply highlights
     highlights.forEach((highlight) => {
@@ -371,7 +425,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
           if (highlightId) {
             const rect = target.getBoundingClientRect();
             setRemoveTooltipPosition({
-              top: rect.top + window.scrollY,
+              top: rect.top, // Use client top for fixed positioning
               left: rect.left + rect.width / 2,
             });
             setHighlightToRemove(highlightId);

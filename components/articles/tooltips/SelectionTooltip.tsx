@@ -28,11 +28,11 @@ const SelectionTooltip: React.FC<SelectionTooltipProps> = ({
 
       {/* Tooltip */}
       <div
-        className="absolute z-50 flex gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+        className="fixed z-50 flex gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
-          transform: "translate(-50%, -100%) translateY(-80px)",
+          transform: "translate(-50%, -100%) translateY(-10px)", // Reduced offset
         }}
       >
         <button

@@ -1,8 +1,8 @@
 "use client";
 
-import AnnotationSidebar, {
+import AnnotationItem, {
   Annotation,
-} from "@/components/articles/components/AnnotationSidebar";
+} from "@/components/articles/components/AnnotationItem";
 import Studio from "@/components/articles/components/Studio";
 import ArticleRenderer from "@/components/articles/renderer/ArticleRenderer";
 import LiveEditor from "@/components/articles/renderer/LiveEditor";
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function ArticlePage() {
   const params = useParams();
@@ -42,7 +42,76 @@ export default function ArticlePage() {
     text: string;
     startOffset: number;
     endOffset: number;
+    initialTop?: number;
   } | null>(null);
+  const [annotationPositions, setAnnotationPositions] = useState<
+    Record<string, number>
+  >({});
+  const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(
+    null,
+  );
+
+  // Calculate annotation positions
+  useEffect(() => {
+    const calculatePositions = () => {
+      const positions: Record<string, number> = {};
+      const sortedAnnotations = [...annotations].sort(
+        (a, b) => a.startOffset - b.startOffset,
+      );
+
+      // First pass: get ideal positions from DOM
+      const idealPositions: { id: string; top: number; height: number }[] = [];
+
+      // Include pending annotation in calculation
+      const allAnnotations = [...sortedAnnotations];
+      if (pendingAnnotation) {
+        allAnnotations.push({
+          ...pendingAnnotation,
+          comment: "", // Dummy
+        });
+      }
+
+      allAnnotations.forEach((annotation) => {
+        const mark = document.querySelector(
+          `mark[data-annotation-id="${annotation.id}"]`,
+        );
+        if (mark) {
+          const rect = mark.getBoundingClientRect();
+          // Calculate top relative to the article container
+          // We'll need to adjust this based on the container's position
+          const container = document.getElementById("article-container");
+          const containerRect = container?.getBoundingClientRect();
+
+          if (containerRect) {
+            const top = rect.top - containerRect.top;
+            idealPositions.push({ id: annotation.id, top, height: 150 }); // Assume approx height or measure
+          }
+        }
+      });
+
+      // Second pass: resolve collisions
+      let lastBottom = 0;
+      idealPositions.forEach((pos) => {
+        let top = pos.top;
+        if (top < lastBottom + 10) {
+          top = lastBottom + 10;
+        }
+        positions[pos.id] = top;
+        lastBottom = top + pos.height;
+      });
+
+      setAnnotationPositions(positions);
+    };
+
+    // Run after a short delay to allow rendering
+    const timeout = setTimeout(calculatePositions, 100);
+    window.addEventListener("resize", calculatePositions);
+
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("resize", calculatePositions);
+    };
+  }, [annotations, highlights, pendingAnnotation]); // Re-run when content changes
 
   const handleAddHighlight = (
     text: string,
@@ -61,9 +130,10 @@ export default function ArticlePage() {
     text: string,
     startOffset: number,
     endOffset: number,
+    initialTop?: number,
   ) => {
     const id = `annotation-${Date.now()}-${Math.random()}`;
-    setPendingAnnotation({ id, text, startOffset, endOffset });
+    setPendingAnnotation({ id, text, startOffset, endOffset, initialTop });
   };
 
   const handleAddComment = (annotationId: string, comment: string) => {
@@ -80,6 +150,14 @@ export default function ArticlePage() {
       ]);
       setPendingAnnotation(null);
     }
+  };
+
+  const handleEditAnnotation = (annotationId: string, newComment: string) => {
+    setAnnotations(
+      annotations.map((a) =>
+        a.id === annotationId ? { ...a, comment: newComment } : a,
+      ),
+    );
   };
 
   const handleDeleteAnnotation = (annotationId: string) => {
@@ -203,47 +281,124 @@ export default function ArticlePage() {
             isStudioOpen ? "mr-0 md:mr-[400px] lg:mr-[500px]" : "mr-0",
           )}
         >
-          <div className="mx-auto max-w-3xl px-6 py-12">
-            <div className="mb-8">
-              <h1 className="mb-2 text-4xl leading-tight font-bold text-gray-900">
-                {article.title}
-              </h1>
-              <div className="text-sm text-gray-500">
-                {new URL(article.url).hostname}
+          <div className="flex justify-center">
+            <div
+              id="article-container"
+              className="relative max-w-3xl px-6 py-12"
+            >
+              <div className="mb-8">
+                <h1 className="mb-2 text-4xl leading-tight font-bold text-gray-900">
+                  {article.title}
+                </h1>
+                <div className="text-sm text-gray-500">
+                  {new URL(article.url).hostname}
+                </div>
               </div>
-            </div>
 
-            {isEditing ? (
-              <LiveEditor
-                initialContent={article.content}
-                onSave={handleSave}
-                isEditingMode={true}
-              />
-            ) : (
-              <ArticleRenderer
-                content={article.content}
-                highlights={highlights}
-                annotations={annotations}
-                onAddHighlight={handleAddHighlight}
-                onStartAnnotation={handleStartAnnotation}
-                onDeleteHighlight={handleDeleteHighlight}
-              />
+              {isEditing ? (
+                <LiveEditor
+                  initialContent={article.content}
+                  onSave={handleSave}
+                  isEditingMode={true}
+                />
+              ) : (
+                <ArticleRenderer
+                  content={article.content}
+                  highlights={highlights}
+                  annotations={annotations}
+                  onAddHighlight={handleAddHighlight}
+                  onStartAnnotation={handleStartAnnotation}
+                  onDeleteHighlight={handleDeleteHighlight}
+                  pendingAnnotation={pendingAnnotation}
+                />
+              )}
+            </div>
+            {/* Inline Annotations Column */}
+            {!isEditing && (
+              <div
+                className={clsx(
+                  "relative w-[300px] flex-shrink-0 pt-12",
+                  annotations.length > 0 || pendingAnnotation
+                    ? "block xl:block"
+                    : "hidden",
+                )}
+              >
+                {annotations.map((annotation) => (
+                  <AnnotationItem
+                    key={annotation.id}
+                    annotation={annotation}
+                    style={{
+                      top: annotationPositions[annotation.id] || 0,
+                    }}
+                    onDelete={handleDeleteAnnotation}
+                    onEdit={handleEditAnnotation}
+                    isActive={activeAnnotationId === annotation.id}
+                    onClick={() => setActiveAnnotationId(annotation.id)}
+                  />
+                ))}
+
+                {/* Pending Annotation */}
+                {pendingAnnotation && (
+                  <div
+                    className="absolute right-0 w-[280px] rounded-lg border border-blue-200 bg-white p-4 shadow-md ring-1 ring-blue-100"
+                    style={{
+                      // Position it near the selection if possible, or fixed
+                      top:
+                        annotationPositions[pendingAnnotation.id] ||
+                        pendingAnnotation.initialTop ||
+                        0,
+                    }}
+                  >
+                    <textarea
+                      placeholder="Add a comment..."
+                      className="w-full rounded border border-gray-200 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                      rows={3}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment(
+                            pendingAnnotation.id,
+                            (e.target as HTMLTextAreaElement).value,
+                          );
+                        }
+                      }}
+                      // Add ref or state to capture value for button click
+                      onChange={(e) => {
+                        // We could add local state here if we want the button to work
+                        // For now, let's just rely on Enter or add a simple state
+                      }}
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        onClick={handleCancelPending}
+                        className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          // Find the textarea and submit
+                          const textarea = e.currentTarget.parentElement
+                            ?.previousElementSibling as HTMLTextAreaElement;
+                          if (textarea && textarea.value) {
+                            handleAddComment(
+                              pendingAnnotation.id,
+                              textarea.value,
+                            );
+                          }
+                        }}
+                        className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                      >
+                        Comment
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </main>
-
-        {/* Annotation Sidebar */}
-        {!isEditing && (annotations.length > 0 || pendingAnnotation) && (
-          <aside className="fixed top-[73px] right-0 z-20 h-[calc(100vh-73px)] w-80 shadow-lg">
-            <AnnotationSidebar
-              annotations={annotations}
-              onAddComment={handleAddComment}
-              onDeleteAnnotation={handleDeleteAnnotation}
-              pendingAnnotation={pendingAnnotation || undefined}
-              onCancelPending={handleCancelPending}
-            />
-          </aside>
-        )}
 
         {/* Studio Sidebar */}
         <Studio
