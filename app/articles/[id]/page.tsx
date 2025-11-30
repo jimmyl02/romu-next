@@ -8,6 +8,7 @@ import ArticleRenderer from "@/components/articles/renderer/ArticleRenderer";
 import LiveEditor from "@/components/articles/renderer/LiveEditor";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { safeUrlCleanup } from "@/util/url";
 import { clsx } from "clsx";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -324,9 +325,11 @@ export default function ArticlePage() {
                 <h1 className="mb-2 text-4xl leading-tight font-bold text-gray-900">
                   {article.title}
                 </h1>
-                <div className="text-sm text-gray-500">
-                  {new URL(article.url).hostname}
-                </div>
+                {article.url !== undefined && (
+                  <div className="text-sm text-gray-500">
+                    {safeUrlCleanup(article.url)}
+                  </div>
+                )}
               </div>
 
               {isEditing ? (
