@@ -41,8 +41,10 @@ export async function POST(req: Request) {
         const response = await fetch(url);
         textToProcess = await response.text();
       } catch (error) {
-        console.error("Failed to fetch URL:", error);
-        return new NextResponse("Failed to fetch URL", { status: 400 });
+        if (textToProcess === undefined || textToProcess === "") {
+          console.error("Failed to fetch URL:", error);
+          return new NextResponse("Failed to fetch URL", { status: 400 });
+        }
       }
     }
 

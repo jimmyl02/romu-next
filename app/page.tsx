@@ -1,7 +1,8 @@
 "use client";
 
-import AddArticleModal from "@/components/AddArticleModal";
+import AddArticleModal from "@/components/home/AddArticleModal";
 import { api } from "@/convex/_generated/api";
+import { safeUrlCleanup } from "@/util/url";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import {
   Authenticated,
@@ -37,7 +38,7 @@ function AuthenticatedDashboard() {
             </h2>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 text-gray-600 transition-colors hover:text-black"
+              className="flex cursor-pointer items-center gap-2 text-gray-600 transition-colors hover:text-black"
             >
               <Plus className="h-4 w-4" />
               Add Article
@@ -67,9 +68,11 @@ function AuthenticatedDashboard() {
                         })}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {new URL(article.url).hostname.replace("www.", "")}
-                    </div>
+                    {article.url !== undefined && (
+                      <div className="text-sm text-gray-500">
+                        {safeUrlCleanup(article.url)}
+                      </div>
+                    )}
                   </article>
                 </Link>
               ))

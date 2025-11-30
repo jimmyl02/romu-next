@@ -8,16 +8,13 @@ export const list = query({
     if (!identity) {
       return [];
     }
-    // In a real app, you might want to filter messages by user if they are private,
-    // or allow all users to see chat if it's a shared article.
-    // For now, let's assume messages are private to the user-article context
-    // OR we can just filter by articleId if it's a shared chat.
-    // Based on the prompt "saving messages from the change which will be hooked up later",
-    // and "writing a note per article", let's assume this is a personal studio for now.
 
+    // AuthZ: only allow messages for the current user for the articleId
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_article", (q) => q.eq("articleId", args.articleId))
+      .withIndex("by_article", (q) =>
+        q.eq("articleId", args.articleId).eq("userId", identity.subject),
+      )
       .order("asc")
       .collect();
     return messages;

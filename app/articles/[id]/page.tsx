@@ -1,10 +1,12 @@
 "use client";
 
-import ArticleRenderer from "@/components/ArticleRenderer";
-import LiveEditor from "@/components/LiveEditor";
-import Studio from "@/components/Studio";
+import AnnotationItem from "@/components/articles/components/AnnotationItem";
+import Studio from "@/components/articles/components/Studio";
+import ArticleRenderer from "@/components/articles/renderer/ArticleRenderer";
+import LiveEditor from "@/components/articles/renderer/LiveEditor";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { safeUrlCleanup } from "@/util/url";
 import { clsx } from "clsx";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -18,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function ArticlePage() {
   const params = useParams();
@@ -28,6 +30,237 @@ export default function ArticlePage() {
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Highlight state
+  const highlights = useQuery(api.highlights.list, { articleId: id });
+  const addHighlightRaw = useMutation(
+    api.highlights.create,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { articleId, text, startOffset, endOffset } = args;
+    const existingHighlights = localStore.getQuery(api.highlights.list, {
+      articleId,
+    });
+
+    // Now that we have the existing highlights, we can optimistically add the new highlight
+    if (existingHighlights !== undefined) {
+      const newHighlight = {
+        _id: crypto.randomUUID() as Id<"highlights">,
+        _creationTime: Date.now(),
+        articleId,
+        userId: "", // this is okay as convex will just roll this back
+        text,
+        startOffset,
+        endOffset,
+      };
+      localStore.setQuery(api.highlights.list, { articleId }, [
+        ...existingHighlights,
+        newHighlight,
+      ]);
+    }
+  });
+  const addHighlight = useCallback(
+    (text: string, startOffset: number, endOffset: number) => {
+      addHighlightRaw({ articleId: id, text, startOffset, endOffset });
+    },
+    [id],
+  );
+  const removeHighlightRaw = useMutation(
+    api.highlights.remove,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { highlightId } = args;
+    const existingHighlights = localStore.getQuery(api.highlights.list, {
+      articleId: id,
+    });
+    if (existingHighlights !== undefined) {
+      localStore.setQuery(api.highlights.list, { articleId: id }, [
+        ...existingHighlights.filter((h) => h._id !== highlightId),
+      ]);
+    }
+  });
+  const removeHighlight = useCallback((highlightId: string) => {
+    removeHighlightRaw({ highlightId: highlightId as Id<"highlights"> });
+  }, []);
+
+  // Annotations state
+  const annotations = useQuery(api.annotations.list, { articleId: id });
+  const addAnnotationRaw = useMutation(
+    api.annotations.create,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { articleId, text, comment, startOffset, endOffset } = args;
+    const existingAnnotations = localStore.getQuery(api.annotations.list, {
+      articleId,
+    });
+
+    if (existingAnnotations !== undefined) {
+      const newAnnotation = {
+        _id: crypto.randomUUID() as Id<"annotations">,
+        _creationTime: Date.now(),
+        articleId,
+        userId: "",
+        text,
+        comment,
+        startOffset,
+        endOffset,
+      };
+      localStore.setQuery(api.annotations.list, { articleId }, [
+        ...existingAnnotations,
+        newAnnotation,
+      ]);
+    }
+  });
+  const updateAnnotationRaw = useMutation(
+    api.annotations.update,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { annotationId, comment } = args;
+    const existingAnnotations = localStore.getQuery(api.annotations.list, {
+      articleId: id,
+    });
+    if (existingAnnotations !== undefined) {
+      localStore.setQuery(
+        api.annotations.list,
+        { articleId: id },
+        existingAnnotations.map((a) =>
+          a._id === annotationId ? { ...a, comment } : a,
+        ),
+      );
+    }
+  });
+  const removeAnnotationRaw = useMutation(
+    api.annotations.remove,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { annotationId } = args;
+    const existingAnnotations = localStore.getQuery(api.annotations.list, {
+      articleId: id,
+    });
+    if (existingAnnotations !== undefined) {
+      localStore.setQuery(api.annotations.list, { articleId: id }, [
+        ...existingAnnotations.filter((a) => a._id !== annotationId),
+      ]);
+    }
+  });
+
+  const [pendingAnnotation, setPendingAnnotation] = useState<{
+    id: string;
+    text: string;
+    startOffset: number;
+    endOffset: number;
+    initialTop?: number;
+  } | null>(null);
+  const [annotationPositions, setAnnotationPositions] = useState<
+    Record<string, number>
+  >({});
+  const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(
+    null,
+  );
+
+  // Calculate annotation positions
+  useEffect(() => {
+    const calculatePositions = () => {
+      const positions: Record<string, number> = {};
+      const sortedAnnotations = [...(annotations ?? [])].sort(
+        (a, b) => a.startOffset - b.startOffset,
+      );
+
+      // First pass: get ideal positions from DOM
+      const idealPositions: { id: string; top: number; height: number }[] = [];
+
+      // Include pending annotation in calculation
+      const allAnnotations: Array<{
+        id: string;
+        startOffset: number;
+        endOffset: number;
+      }> = sortedAnnotations.map((a) => ({
+        id: a._id,
+        startOffset: a.startOffset,
+        endOffset: a.endOffset,
+      }));
+      if (pendingAnnotation) {
+        allAnnotations.push({
+          id: pendingAnnotation.id,
+          startOffset: pendingAnnotation.startOffset,
+          endOffset: pendingAnnotation.endOffset,
+        });
+      }
+
+      allAnnotations.forEach((annotation) => {
+        const mark = document.querySelector(
+          `mark[data-annotation-id="${annotation.id}"]`,
+        );
+        if (mark) {
+          const rect = mark.getBoundingClientRect();
+          // Calculate top relative to the article container
+          // We'll need to adjust this based on the container's position
+          const container = document.getElementById("article-container");
+          const containerRect = container?.getBoundingClientRect();
+
+          if (containerRect) {
+            const top = rect.top - containerRect.top;
+            idealPositions.push({ id: annotation.id, top, height: 150 }); // Assume approx height or measure
+          }
+        }
+      });
+
+      // Second pass: resolve collisions
+      let lastBottom = 0;
+      idealPositions.forEach((pos) => {
+        let top = pos.top;
+        if (top < lastBottom + 10) {
+          top = lastBottom + 10;
+        }
+        positions[pos.id] = top;
+        lastBottom = top + pos.height;
+      });
+
+      setAnnotationPositions(positions);
+    };
+
+    // Run after a short delay to allow rendering
+    const timeout = setTimeout(calculatePositions, 100);
+    window.addEventListener("resize", calculatePositions);
+
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("resize", calculatePositions);
+    };
+  }, [annotations, highlights, pendingAnnotation]); // Re-run when content changes
+
+  const handleStartAnnotation = (
+    text: string,
+    startOffset: number,
+    endOffset: number,
+    initialTop?: number,
+  ) => {
+    const id = `annotation-${Date.now()}-${Math.random()}`;
+    setPendingAnnotation({ id, text, startOffset, endOffset, initialTop });
+  };
+
+  const handleAddComment = (annotationId: string, comment: string) => {
+    if (pendingAnnotation && pendingAnnotation.id === annotationId) {
+      addAnnotationRaw({
+        articleId: id,
+        text: pendingAnnotation.text,
+        comment,
+        startOffset: pendingAnnotation.startOffset,
+        endOffset: pendingAnnotation.endOffset,
+      });
+      setPendingAnnotation(null);
+    }
+  };
+
+  const handleEditAnnotation = (annotationId: string, newComment: string) => {
+    updateAnnotationRaw({
+      annotationId: annotationId as Id<"annotations">,
+      comment: newComment,
+    });
+  };
+
+  const handleDeleteAnnotation = (annotationId: string) => {
+    removeAnnotationRaw({ annotationId: annotationId as Id<"annotations"> });
+  };
+
+  const handleCancelPending = () => {
+    setPendingAnnotation(null);
+  };
 
   if (article === undefined) {
     return <div className="p-8 text-gray-500">Loading article...</div>;
@@ -142,29 +375,139 @@ export default function ArticlePage() {
             isStudioOpen ? "mr-0 md:mr-[400px] lg:mr-[500px]" : "mr-0",
           )}
         >
-          <div className="mx-auto max-w-3xl px-6 py-12">
-            <div className="mb-8">
-              <h1 className="mb-2 text-4xl leading-tight font-bold text-gray-900">
-                {article.title}
-              </h1>
-              <div className="text-sm text-gray-500">
-                {new URL(article.url).hostname}
+          <div className="flex justify-center">
+            <div
+              id="article-container"
+              className="relative max-w-3xl px-6 py-12"
+            >
+              <div className="mb-8">
+                <h1 className="mb-2 text-4xl leading-tight font-bold text-gray-900">
+                  {article.title}
+                </h1>
+                {article.url !== undefined && (
+                  <div className="text-sm text-gray-500">
+                    {safeUrlCleanup(article.url)}
+                  </div>
+                )}
               </div>
-            </div>
 
-            {isEditing ? (
-              <LiveEditor
-                initialContent={article.content}
-                onSave={handleSave}
-                isEditingMode={true}
-              />
-            ) : (
-              <ArticleRenderer content={article.content} />
+              {isEditing ? (
+                <LiveEditor
+                  initialContent={article.content}
+                  onSave={handleSave}
+                  isEditingMode={true}
+                />
+              ) : (
+                <ArticleRenderer
+                  content={article.content}
+                  highlights={highlights}
+                  annotations={(annotations ?? []).map((a) => ({
+                    id: a._id,
+                    text: a.text,
+                    comment: a.comment,
+                    startOffset: a.startOffset,
+                    endOffset: a.endOffset,
+                  }))}
+                  onAddHighlight={addHighlight}
+                  onStartAnnotation={handleStartAnnotation}
+                  onDeleteHighlight={removeHighlight}
+                  pendingAnnotation={pendingAnnotation}
+                />
+              )}
+            </div>
+            {/* Inline Annotations Column */}
+            {!isEditing && (
+              <div
+                className={clsx(
+                  "relative w-[300px] flex-shrink-0 pt-12",
+                  (annotations ?? []).length > 0 || pendingAnnotation
+                    ? "block xl:block"
+                    : "hidden",
+                )}
+              >
+                {(annotations ?? []).map((annotation) => (
+                  <AnnotationItem
+                    key={annotation._id}
+                    annotation={{
+                      id: annotation._id,
+                      text: annotation.text,
+                      comment: annotation.comment,
+                      startOffset: annotation.startOffset,
+                      endOffset: annotation.endOffset,
+                    }}
+                    style={{
+                      top: annotationPositions[annotation._id] || 0,
+                    }}
+                    onDelete={handleDeleteAnnotation}
+                    onEdit={handleEditAnnotation}
+                    isActive={activeAnnotationId === annotation._id}
+                    onClick={() => setActiveAnnotationId(annotation._id)}
+                  />
+                ))}
+
+                {/* Pending Annotation */}
+                {pendingAnnotation && (
+                  <div
+                    className="absolute right-0 w-[280px] rounded-lg border border-blue-200 bg-white p-4 shadow-md ring-1 ring-blue-100"
+                    style={{
+                      // Position it near the selection if possible, or fixed
+                      top:
+                        annotationPositions[pendingAnnotation.id] ||
+                        pendingAnnotation.initialTop ||
+                        0,
+                    }}
+                  >
+                    <textarea
+                      placeholder="Add a comment..."
+                      className="w-full rounded border border-gray-200 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                      rows={3}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment(
+                            pendingAnnotation.id,
+                            (e.target as HTMLTextAreaElement).value,
+                          );
+                        }
+                      }}
+                      // Add ref or state to capture value for button click
+                      onChange={(e) => {
+                        // We could add local state here if we want the button to work
+                        // For now, let's just rely on Enter or add a simple state
+                      }}
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        onClick={handleCancelPending}
+                        className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          // Find the textarea and submit
+                          const textarea = e.currentTarget.parentElement
+                            ?.previousElementSibling as HTMLTextAreaElement;
+                          if (textarea && textarea.value) {
+                            handleAddComment(
+                              pendingAnnotation.id,
+                              textarea.value,
+                            );
+                          }
+                        }}
+                        className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                      >
+                        Comment
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </main>
 
-        {/* Studio Sidebar */}
         {/* Studio Sidebar */}
         <Studio
           isOpen={isStudioOpen}

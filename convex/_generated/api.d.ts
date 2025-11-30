@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as annotations from "../annotations.js";
 import type * as articles from "../articles.js";
+import type * as highlights from "../highlights.js";
 import type * as messages from "../messages.js";
 import type * as notes from "../notes.js";
 import type * as users from "../users.js";
@@ -20,7 +22,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  annotations: typeof annotations;
   articles: typeof articles;
+  highlights: typeof highlights;
   messages: typeof messages;
   notes: typeof notes;
   users: typeof users;
