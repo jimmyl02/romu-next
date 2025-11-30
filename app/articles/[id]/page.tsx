@@ -1,8 +1,6 @@
 "use client";
 
-import AnnotationItem, {
-  Annotation,
-} from "@/components/articles/components/AnnotationItem";
+import AnnotationItem from "@/components/articles/components/AnnotationItem";
 import Studio from "@/components/articles/components/Studio";
 import ArticleRenderer from "@/components/articles/renderer/ArticleRenderer";
 import LiveEditor from "@/components/articles/renderer/LiveEditor";
@@ -84,7 +82,63 @@ export default function ArticlePage() {
   }, []);
 
   // Annotations state
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const annotations = useQuery(api.annotations.list, { articleId: id });
+  const addAnnotationRaw = useMutation(
+    api.annotations.create,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { articleId, text, comment, startOffset, endOffset } = args;
+    const existingAnnotations = localStore.getQuery(api.annotations.list, {
+      articleId,
+    });
+
+    if (existingAnnotations !== undefined) {
+      const newAnnotation = {
+        _id: crypto.randomUUID() as Id<"annotations">,
+        _creationTime: Date.now(),
+        articleId,
+        userId: "",
+        text,
+        comment,
+        startOffset,
+        endOffset,
+      };
+      localStore.setQuery(api.annotations.list, { articleId }, [
+        ...existingAnnotations,
+        newAnnotation,
+      ]);
+    }
+  });
+  const updateAnnotationRaw = useMutation(
+    api.annotations.update,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { annotationId, comment } = args;
+    const existingAnnotations = localStore.getQuery(api.annotations.list, {
+      articleId: id,
+    });
+    if (existingAnnotations !== undefined) {
+      localStore.setQuery(
+        api.annotations.list,
+        { articleId: id },
+        existingAnnotations.map((a) =>
+          a._id === annotationId ? { ...a, comment } : a,
+        ),
+      );
+    }
+  });
+  const removeAnnotationRaw = useMutation(
+    api.annotations.remove,
+  ).withOptimisticUpdate((localStore, args) => {
+    const { annotationId } = args;
+    const existingAnnotations = localStore.getQuery(api.annotations.list, {
+      articleId: id,
+    });
+    if (existingAnnotations !== undefined) {
+      localStore.setQuery(api.annotations.list, { articleId: id }, [
+        ...existingAnnotations.filter((a) => a._id !== annotationId),
+      ]);
+    }
+  });
+
   const [pendingAnnotation, setPendingAnnotation] = useState<{
     id: string;
     text: string;
@@ -103,7 +157,7 @@ export default function ArticlePage() {
   useEffect(() => {
     const calculatePositions = () => {
       const positions: Record<string, number> = {};
-      const sortedAnnotations = [...annotations].sort(
+      const sortedAnnotations = [...(annotations ?? [])].sort(
         (a, b) => a.startOffset - b.startOffset,
       );
 
@@ -111,11 +165,20 @@ export default function ArticlePage() {
       const idealPositions: { id: string; top: number; height: number }[] = [];
 
       // Include pending annotation in calculation
-      const allAnnotations = [...sortedAnnotations];
+      const allAnnotations: Array<{
+        id: string;
+        startOffset: number;
+        endOffset: number;
+      }> = sortedAnnotations.map((a) => ({
+        id: a._id,
+        startOffset: a.startOffset,
+        endOffset: a.endOffset,
+      }));
       if (pendingAnnotation) {
         allAnnotations.push({
-          ...pendingAnnotation,
-          comment: "", // Dummy
+          id: pendingAnnotation.id,
+          startOffset: pendingAnnotation.startOffset,
+          endOffset: pendingAnnotation.endOffset,
         });
       }
 
@@ -173,30 +236,26 @@ export default function ArticlePage() {
 
   const handleAddComment = (annotationId: string, comment: string) => {
     if (pendingAnnotation && pendingAnnotation.id === annotationId) {
-      setAnnotations([
-        ...annotations,
-        {
-          id: pendingAnnotation.id,
-          text: pendingAnnotation.text,
-          comment,
-          startOffset: pendingAnnotation.startOffset,
-          endOffset: pendingAnnotation.endOffset,
-        },
-      ]);
+      addAnnotationRaw({
+        articleId: id,
+        text: pendingAnnotation.text,
+        comment,
+        startOffset: pendingAnnotation.startOffset,
+        endOffset: pendingAnnotation.endOffset,
+      });
       setPendingAnnotation(null);
     }
   };
 
   const handleEditAnnotation = (annotationId: string, newComment: string) => {
-    setAnnotations(
-      annotations.map((a) =>
-        a.id === annotationId ? { ...a, comment: newComment } : a,
-      ),
-    );
+    updateAnnotationRaw({
+      annotationId: annotationId as Id<"annotations">,
+      comment: newComment,
+    });
   };
 
   const handleDeleteAnnotation = (annotationId: string) => {
-    setAnnotations(annotations.filter((a) => a.id !== annotationId));
+    removeAnnotationRaw({ annotationId: annotationId as Id<"annotations"> });
   };
 
   const handleCancelPending = () => {
@@ -342,7 +401,13 @@ export default function ArticlePage() {
                 <ArticleRenderer
                   content={article.content}
                   highlights={highlights}
-                  annotations={annotations}
+                  annotations={(annotations ?? []).map((a) => ({
+                    id: a._id,
+                    text: a.text,
+                    comment: a.comment,
+                    startOffset: a.startOffset,
+                    endOffset: a.endOffset,
+                  }))}
                   onAddHighlight={addHighlight}
                   onStartAnnotation={handleStartAnnotation}
                   onDeleteHighlight={removeHighlight}
@@ -355,22 +420,28 @@ export default function ArticlePage() {
               <div
                 className={clsx(
                   "relative w-[300px] flex-shrink-0 pt-12",
-                  annotations.length > 0 || pendingAnnotation
+                  (annotations ?? []).length > 0 || pendingAnnotation
                     ? "block xl:block"
                     : "hidden",
                 )}
               >
-                {annotations.map((annotation) => (
+                {(annotations ?? []).map((annotation) => (
                   <AnnotationItem
-                    key={annotation.id}
-                    annotation={annotation}
+                    key={annotation._id}
+                    annotation={{
+                      id: annotation._id,
+                      text: annotation.text,
+                      comment: annotation.comment,
+                      startOffset: annotation.startOffset,
+                      endOffset: annotation.endOffset,
+                    }}
                     style={{
-                      top: annotationPositions[annotation.id] || 0,
+                      top: annotationPositions[annotation._id] || 0,
                     }}
                     onDelete={handleDeleteAnnotation}
                     onEdit={handleEditAnnotation}
-                    isActive={activeAnnotationId === annotation.id}
-                    onClick={() => setActiveAnnotationId(annotation.id)}
+                    isActive={activeAnnotationId === annotation._id}
+                    onClick={() => setActiveAnnotationId(annotation._id)}
                   />
                 ))}
 

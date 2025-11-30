@@ -43,4 +43,13 @@ export default defineSchema({
     startOffset: v.number(),
     endOffset: v.number(),
   }).index("by_user_article", ["articleId", "userId"]),
+
+  annotations: defineTable({
+    articleId: v.id("articles"),
+    userId: v.string(),
+    text: v.string(),
+    comment: v.string(),
+    startOffset: v.number(),
+    endOffset: v.number(),
+  }).index("by_user_article", ["articleId", "userId"]),
 });
