@@ -57,8 +57,11 @@ export async function POST(req: Request) {
       2. Be opinionated about formatting: use proper headers, lists, and emphasis to make it readable.
       3. Remove any web artifacts (ads, navigation links, "read more", etc.) if the source was a webpage.
       4. Return the result as a JSON object with title, description, authors, and markdown content.
-      5. If the title is the same as the leading headline, omit the leading headline from the markdown content.
+      5. Attempt to preserve image links where if the URL is a relative path, convert it to an absolute path using the base domain
       
+      Metadata:
+      URL: ${url}
+
       Content to process:
       ${textToProcess.slice(0, 100000)} // Limit input size to avoid token limits if necessary, though Gemini has a large context window.
     `;
