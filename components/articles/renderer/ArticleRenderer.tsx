@@ -375,7 +375,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
         annotation.startOffset,
         annotation.endOffset,
         "annotation",
-        "background-color: #FFF4CC; border-bottom: 2px solid #F59E0B; cursor: pointer; padding: 2px 0;",
+        "background-color: #FFF4CC; text-decoration: underline; text-decoration-color: #F59E0B; text-decoration-thickness: 2px; cursor: pointer;",
         annotation.id, // Pass the ID for annotations too
       );
     });
@@ -386,7 +386,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({
         pendingAnnotation.startOffset,
         pendingAnnotation.endOffset,
         "annotation", // Use same class for lookup
-        "background-color: #FEF3C7; border-bottom: 2px dashed #F59E0B; cursor: default;", // Dashed underline for pending
+        "background-color: #FEF3C7; text-decoration: underline; text-decoration-style: dashed; text-decoration-color: #F59E0B; text-decoration-thickness: 2px; cursor: default;", // Dashed underline for pending
         pendingAnnotation.id,
       );
     }

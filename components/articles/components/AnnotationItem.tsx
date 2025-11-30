@@ -155,11 +155,6 @@ const AnnotationItem: React.FC<AnnotationItemProps> = ({
           <p className="text-sm leading-relaxed text-gray-800">
             {annotation.comment}
           </p>
-          <div className="mt-2 border-l-2 border-gray-200 pl-2">
-            <p className="line-clamp-2 text-xs text-gray-500 italic">
-              "{annotation.text}"
-            </p>
-          </div>
         </>
       )}
     </div>
